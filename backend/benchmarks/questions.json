@@ -1,0 +1,322 @@
+[
+  {
+    "id": 1,
+    "question": "What was the first attempt by any country to launch a probe into deep space?",
+    "relevant_chunk_ids": [
+      7,
+      8,
+      10
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 2,
+    "question": "Which spacecraft was the first probe to reach escape velocity?",
+    "relevant_chunk_ids": [
+      8
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 3,
+    "question": "Which mission was the first spacecraft to impact another celestial body?",
+    "relevant_chunk_ids": [
+      8,
+      16
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 4,
+    "question": "Which spacecraft completed the first successful planetary mission, and what was its target?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 5,
+    "question": "Which mission was the first spacecraft to impact another planet?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 6,
+    "question": "Which spacecraft made the first survivable landing on a celestial body?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 7,
+    "question": "Which spacecraft was the first to orbit a celestial body other than Earth or the Sun?",
+    "relevant_chunk_ids": [
+      8
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 8,
+    "question": "Which mission achieved the first successful planetary atmospheric entry?",
+    "relevant_chunk_ids": [
+      8,
+      9
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 9,
+    "question": "Which spacecraft achieved the first liftoff from another celestial body?",
+    "relevant_chunk_ids": [
+      8,
+      9
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 10,
+    "question": "Which mission was the first to transmit from the surface of another planet?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 11,
+    "question": "Which spacecraft was the first robotic mission to recover and return samples from another celestial body?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 12,
+    "question": "Which mission placed the first wheeled vehicle on another celestial body?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 13,
+    "question": "Which spacecraft was the first to fly through the asteroid belt?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 14,
+    "question": "Which spacecraft first used gravity assist to change its interplanetary trajectory?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 15,
+    "question": "Which mission was the first spacecraft to fly past multiple planets?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 16,
+    "question": "Which spacecraft first transmitted photographs from the surface of another planet?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 17,
+    "question": "Which spacecraft was the first to orbit a libration point?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 18,
+    "question": "Which mission was the first spacecraft to fly past a comet?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 19,
+    "question": "Which spacecraft first used Earth for a gravity-assist maneuver?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 20,
+    "question": "Which Japanese spacecraft was the first to use aerobraking to reduce its velocity?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 21,
+    "question": "Which spacecraft was the first to fly past an asteroid?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 22,
+    "question": "Which mission placed the first wheeled vehicle on Mars?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 23,
+    "question": "Which spacecraft was the first to use ion propulsion as its primary propulsion system in deep space?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 24,
+    "question": "Which spacecraft was the first to orbit an asteroid?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 25,
+    "question": "Which spacecraft was the first to land on an asteroid?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 26,
+    "question": "Which mission was the first spacecraft to return extraterrestrial material from beyond lunar orbit?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 27,
+    "question": "Which Japanese spacecraft became the first to use a solar sail as its primary propulsion system in deep space?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 28,
+    "question": "Which spacecraft was the first to orbit a body in the main asteroid belt?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 29,
+    "question": "Which spacecraft became the first to orbit a dwarf planet?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 30,
+    "question": "Which spacecraft was the first to photograph the farside of the Moon?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 31,
+    "question": "Which spacecraft achieved the first successful circumlunar mission?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 32,
+    "question": "Which spacecraft was the first to view the poles of the Sun?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 33,
+    "question": "Which spacecraft was the first to fly by Mercury?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 34,
+    "question": "Which spacecraft was the first to orbit Mercury?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 35,
+    "question": "Which mission made the first successful flyby of Venus?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 36,
+    "question": "Which spacecraft made the first successful atmospheric entry into Venus?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 37,
+    "question": "Which mission achieved the first soft landing on Venus and returned data from its surface?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 38,
+    "question": "Which spacecraft was the first to image the entire surface of Venus?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 39,
+    "question": "Which spacecraft took the first pictures of the surface of Mars?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 40,
+    "question": "Which spacecraft was the first to orbit Mars?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 41,
+    "question": "Which mission achieved the first successful soft landing on the Martian surface?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 42,
+    "question": "Which spacecraft was the first to fly by Jupiter?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 43,
+    "question": "Which mission performed the first atmospheric entry into Jupiter?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 44,
+    "question": "Which spacecraft was the first to orbit Jupiter?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 45,
+    "question": "Which mission was designed to investigate Jupiter's interior from a polar orbit?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 46,
+    "question": "Which spacecraft was the first to orbit Saturn?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 47,
+    "question": "Which European spacecraft achieved the first soft landing on Titan?",
+    "relevant_chunk_ids": [
+      154,
+      155
+    ],
+    "is_human_verified": false
+  },
+  {
+    "id": 48,
+    "question": "Which spacecraft completed the first flyby of Uranus?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 49,
+    "question": "Which spacecraft completed the first flyby of Neptune?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  },
+  {
+    "id": 50,
+    "question": "Which spacecraft became the first to fly by Pluto, and what broader region of the Solar System was it also sent to study?",
+    "relevant_chunk_ids": [],
+    "is_human_verified": false
+  }
+]

@@ -1,0 +1,55 @@
+# =========================
+# Python
+# =========================
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# =========================
+# Node.js
+# =========================
+node_modules/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+
+# Keep example environment files
+!.env.example
+
+# =========================
+# Generated RAG data
+# =========================
+faiss_data/
+
+# =========================
+# Uploaded documents
+# =========================
+uploads/
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# Local database
+*.db
+
+# Project tree dump
+project_tree.txt

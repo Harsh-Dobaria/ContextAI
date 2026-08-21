@@ -1,0 +1,16 @@
+BROAD_KEYWORDS = [
+    "all",
+    "every",
+    "each",
+    "list",
+    "complete",
+    "entire",
+    "throughout",
+    "all the",
+    "all of",
+    "every one",
+    "what are the",
+    "which are the",
+    "tell me all",
+    "give me all",
+]
