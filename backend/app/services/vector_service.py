@@ -2,6 +2,7 @@ import json
 import os
 
 import faiss
+from langsmith import traceable
 import numpy as np
 
 from app.models.document_chunk import DocumentChunk
@@ -18,6 +19,112 @@ CHUNK_IDS_PATH = os.path.join(
     FAISS_DIR,
     "chunk_ids.json"
 )
+
+
+@traceable(name="faiss_search", run_type="retriever")
+def _execute_faiss_search(
+    index: faiss.Index,
+    dimension: int,
+    chunk_ids: list[int],
+    embedding: list[float],
+    top_k: int = 5
+) -> list[tuple[int, float]]:
+
+    if index.ntotal == 0:
+
+        print(
+            "FAISS search skipped: "
+            "index is empty"
+        )
+
+        return []
+
+
+    vector = np.array(
+        [embedding],
+        dtype="float32"
+    )
+
+
+    # Validate query embedding dimension
+    if (
+        vector.shape[1]
+        != dimension
+    ):
+
+        raise ValueError(
+            f"Query embedding dimension mismatch. "
+            f"Expected {dimension}, "
+            f"got {vector.shape[1]}"
+        )
+
+
+    actual_top_k = min(
+        top_k,
+        index.ntotal
+    )
+
+
+    distances, indices = index.search(
+        vector,
+        actual_top_k
+    )
+
+
+    results: list[
+        tuple[int, float]
+    ] = []
+
+
+    for distance, idx in zip(
+        distances[0],
+        indices[0]
+    ):
+
+        pos = int(idx)
+
+        # FAISS returns -1 for invalid results
+        if pos == -1:
+
+            continue
+
+
+        # Prevent mapping errors
+        if (
+            pos < 0
+            or pos >= len(
+                chunk_ids
+            )
+        ):
+
+            print(
+                f"WARNING: Invalid FAISS index "
+                f"position: {pos}"
+            )
+
+            continue
+
+
+        chunk_id = chunk_ids[
+            pos
+        ]
+
+
+        results.append(
+            (
+                int(chunk_id),
+                float(distance)
+            )
+        )
+
+
+    print(
+        f"FAISS returned "
+        f"{len(results)} results"
+    )
+
+
+    return results
 
 
 class FAISSVectorStore:
@@ -187,102 +294,13 @@ class FAISSVectorStore:
         embedding: list[float],
         top_k: int = 5
     ) -> list[tuple[int, float]]:
-
-        if self.index.ntotal == 0:
-
-            print(
-                "FAISS search skipped: "
-                "index is empty"
-            )
-
-            return []
-
-
-        vector = np.array(
-            [embedding],
-            dtype="float32"
+        return _execute_faiss_search(
+            index=self.index,
+            dimension=self.dimension,
+            chunk_ids=self.chunk_ids,
+            embedding=embedding,
+            top_k=top_k
         )
-
-
-        # Validate query embedding dimension
-        if (
-            vector.shape[1]
-            != self.dimension
-        ):
-
-            raise ValueError(
-                f"Query embedding dimension mismatch. "
-                f"Expected {self.dimension}, "
-                f"got {vector.shape[1]}"
-            )
-
-
-        actual_top_k = min(
-            top_k,
-            self.index.ntotal
-        )
-
-
-        distances, indices = self.index.search(
-            vector,
-            actual_top_k
-        )
-
-
-        results: list[
-            tuple[int, float]
-        ] = []
-
-
-        for distance, index in zip(
-            distances[0],
-            indices[0]
-        ):
-
-            index = int(index)
-
-            # FAISS returns -1 for invalid results
-            if index == -1:
-
-                continue
-
-
-            # Prevent mapping errors
-            if (
-                index < 0
-                or index >= len(
-                    self.chunk_ids
-                )
-            ):
-
-                print(
-                    f"WARNING: Invalid FAISS index "
-                    f"position: {index}"
-                )
-
-                continue
-
-
-            chunk_id = self.chunk_ids[
-                index
-            ]
-
-
-            results.append(
-                (
-                    int(chunk_id),
-                    float(distance)
-                )
-            )
-
-
-        print(
-            f"FAISS returned "
-            f"{len(results)} results"
-        )
-
-
-        return results
 
 
     # ---------------------------------

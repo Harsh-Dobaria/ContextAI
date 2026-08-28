@@ -2,6 +2,8 @@ import time
 from typing import Any, cast
 from concurrent.futures import ThreadPoolExecutor
 
+from langsmith import traceable
+
 from app.database.database import SessionLocal
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
@@ -40,6 +42,7 @@ def preload_chunks() -> None:
         db.close()
 
 
+@traceable(name="reciprocal_rank_fusion", run_type="chain")
 def weighted_reciprocal_rank_fusion(
     result_lists: list[tuple[list[int], float]],
     k: int = 10
@@ -69,6 +72,7 @@ def weighted_reciprocal_rank_fusion(
     ]
 
 
+@traceable(name="retrieve_documents", run_type="retriever")
 def retrieve_documents(
     question: str,
     workspace_id: int,
@@ -149,6 +153,12 @@ def retrieve_documents(
     if retrieval_mode == "faiss":
 
         candidate_ids = faiss_ids[
+            :retrieval_count
+        ]
+
+    elif retrieval_mode == "bm25":
+
+        candidate_ids = bm25_ids[
             :retrieval_count
         ]
 

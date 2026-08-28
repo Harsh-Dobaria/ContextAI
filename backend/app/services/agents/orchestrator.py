@@ -1,9 +1,12 @@
 from typing import Any
 import time
 
+from langsmith import traceable
+
 from app.services.agents.rag_graph import rag_graph
 
 
+@traceable(name="rag_pipeline", run_type="chain")
 def run_rag_pipeline(
     question: str,
     workspace_id: int,

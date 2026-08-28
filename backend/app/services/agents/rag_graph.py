@@ -346,3 +346,15 @@ def build_rag_graph():
 
 
 rag_graph = build_rag_graph()
+
+rag_graph = build_rag_graph()
+
+if __name__ == "__main__":
+    print("Generating graph...")
+
+    graph_png = rag_graph.get_graph().draw_mermaid_png()
+
+    with open("rag_graph.png", "wb") as file:
+        file.write(graph_png)
+
+    print("Graph created successfully!")

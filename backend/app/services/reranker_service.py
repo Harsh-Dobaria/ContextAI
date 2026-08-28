@@ -1,6 +1,36 @@
 from typing import cast
 
+from langsmith import traceable
 from sentence_transformers import CrossEncoder
+
+
+@traceable(name="cross_encoder_rerank", run_type="chain")
+def _execute_rerank(
+    model: CrossEncoder,
+    question: str,
+    chunks: list[tuple[int, str]],
+    top_k: int = 3
+) -> list[int]:
+    if not chunks:
+        return []
+
+    pairs = [
+        (question, content)
+        for _, content in chunks
+    ]
+
+    scores = model.predict(pairs)
+
+    ranked = sorted(
+        zip(chunks, scores),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    return [
+        chunk_id
+        for (chunk_id, _), _ in ranked[:top_k]
+    ]
 
 
 class RerankerService:
@@ -28,26 +58,13 @@ class RerankerService:
     ) -> list[int]:
         if not chunks:
             return []
-
         model = self._load_model()
-
-        pairs = [
-            (question, content)
-            for _, content in chunks
-        ]
-
-        scores = model.predict(pairs)
-
-        ranked = sorted(
-            zip(chunks, scores),
-            key=lambda item: item[1],
-            reverse=True
+        return _execute_rerank(
+            model=model,
+            question=question,
+            chunks=chunks,
+            top_k=top_k
         )
-
-        return [
-            chunk_id
-            for (chunk_id, _), _ in ranked[:top_k]
-        ]
 
 
 reranker_service = RerankerService()

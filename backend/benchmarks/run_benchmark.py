@@ -72,6 +72,43 @@ def load_questions():
 
 
 # ---------------------------------
+# Validate questions ground truth
+# ---------------------------------
+
+def validate_ground_truth(questions):
+
+    unlabeled = []
+    for idx, q in enumerate(questions):
+        rel = q.get("relevant_chunk_ids")
+        if not rel or not isinstance(rel, list) or len(rel) == 0:
+            if "relevant_chunk_ids" not in q:
+                reason = "Missing 'relevant_chunk_ids' field"
+            elif rel is None:
+                reason = "'relevant_chunk_ids' is None"
+            elif not isinstance(rel, list):
+                reason = f"'relevant_chunk_ids' is not a list (got {type(rel).__name__})"
+            else:
+                reason = "'relevant_chunk_ids' is an empty list []"
+            unlabeled.append((idx + 1, q, rel, reason))
+
+    if unlabeled:
+        print("\n" + "!" * 75)
+        print(
+            f"[GROUND TRUTH VALIDATION] Warning: Found {len(unlabeled)} unlabeled question(s):"
+        )
+        for num, q, rel, reason in unlabeled:
+            qid = q.get("id", num)
+            qtext = q.get("question", "")
+            print(f"  * Question #{num} (ID: {qid}):")
+            print(f"    - Text: \"{qtext}\"")
+            print(f"    - Ground-truth chunk IDs: {rel!r}")
+            print(f"    - Reason unlabeled: {reason}")
+        print("!" * 75 + "\n")
+    else:
+        print(f"\n[GROUND TRUTH VALIDATION] Validation passed: All {len(questions)} questions have valid ground-truth labels.\n")
+
+
+# ---------------------------------
 # Build BM25 index
 # ---------------------------------
 
@@ -204,13 +241,16 @@ def main():
 
 
     questions = load_questions()[START:END]
+    validate_ground_truth(questions)
 
     faiss_results = []
+    bm25_results = []
     hybrid_results = []
     hyde_results = []
     rerank_results = []
     
     faiss_latencies = []
+    bm25_latencies = []
     hybrid_latencies = []
     hyde_latencies = []
     rerank_latencies = []
@@ -309,6 +349,45 @@ def main():
         print(
             f"FAISS Latency: "
             f"{faiss_latency:.4f}s"
+        )
+
+
+        # ---------------------------------
+        # BM25 ONLY
+        # ---------------------------------
+
+        bm25_result, bm25_latency = (
+            run_retrieval(
+                question,
+                "bm25",
+                query_embedding
+            )
+        )
+
+        bm25_results.append(
+            bm25_result
+        )
+
+        bm25_latencies.append(
+            bm25_latency
+        )
+
+        for k, v in bm25_result.get("latencies", {}).items():
+            if k != "embedding":
+                granular_latencies[f"bm25_{k}"].append(v)
+
+
+        print(
+            "\nBM25 IDs:"
+        )
+
+        print(
+            bm25_result["chunk_ids"]
+        )
+
+        print(
+            f"BM25 Latency: "
+            f"{bm25_latency:.4f}s"
         )
 
 
@@ -438,6 +517,11 @@ def main():
         questions
     )
 
+    bm25_valid, bm25_hits, bm25_unlabeled, bm25_recall = calculate_recall(
+        bm25_results,
+        questions
+    )
+
     hybrid_valid, hybrid_hits, hybrid_unlabeled, hybrid_recall = calculate_recall(
         hybrid_results,
         questions
@@ -459,11 +543,13 @@ def main():
     # ---------------------------------
 
     faiss_average = float(np.mean(faiss_latencies))
+    bm25_average = float(np.mean(bm25_latencies))
     hybrid_average = float(np.mean(hybrid_latencies))
     hyde_average = float(np.mean(hyde_latencies))
     rerank_average = float(np.mean(rerank_latencies))
 
     faiss_p95 = float(np.percentile(faiss_latencies, 95))
+    bm25_p95 = float(np.percentile(bm25_latencies, 95))
     hybrid_p95 = float(np.percentile(hybrid_latencies, 95))
     hyde_p95 = float(np.percentile(hyde_latencies, 95))
     rerank_p95 = float(np.percentile(rerank_latencies, 95))
@@ -529,6 +615,39 @@ def main():
     print(
         f"P95 Latency: "
         f"{faiss_p95:.4f}s"
+    )
+
+
+    # ---------------------------------
+    # BM25 RESULTS
+    # ---------------------------------
+
+    print(
+        "\nBM25 ONLY"
+    )
+
+    if bm25_recall is None:
+        print(
+            "Recall@5: "
+            "Ground truth not added yet"
+        )
+    else:
+        print(
+            f"Hits: {bm25_hits} / {bm25_valid}"
+        )
+        print(
+            f"Recall@5: "
+            f"{bm25_recall * 100:.2f}%"
+        )
+
+    print(
+        f"Average Latency: "
+        f"{bm25_average:.4f}s"
+    )
+
+    print(
+        f"P95 Latency: "
+        f"{bm25_p95:.4f}s"
     )
 
 
@@ -615,6 +734,10 @@ def main():
         print(
             "\nRECALL IMPROVEMENT"
         )
+
+        if bm25_recall is not None:
+            bm25_improvement = (bm25_recall - faiss_recall) * 100
+            print(f"BM25 vs FAISS: {bm25_improvement:+.2f} percentage points")
 
         print(f"Hybrid vs FAISS: {improvement:+.2f} percentage points")
         

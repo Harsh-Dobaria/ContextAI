@@ -25,5 +25,8 @@ pypdf>=6.16.0
 bcrypt>=5.0.0
 pyjwt>=2.13.0
 
+# Observability & Evaluation
+langsmith>=0.11.0
+
 # Configuration
 python-dotenv>=1.2.0

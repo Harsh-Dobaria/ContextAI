@@ -1,5 +1,7 @@
 from typing import Any
 
+from langsmith import traceable
+
 from app.core.constants import BROAD_KEYWORDS
 
 
@@ -24,6 +26,7 @@ QUESTION_WORDS = [
 ]
 
 
+@traceable(name="query_analysis", run_type="chain")
 def analyze_query(question: str) -> dict[str, Any]:
     question_lower = question.lower().strip()
 
