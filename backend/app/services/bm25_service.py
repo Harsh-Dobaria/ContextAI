@@ -1,13 +1,11 @@
 from typing import cast
 
-from langsmith import traceable
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session
 
 from app.models.document_chunk import DocumentChunk
 
 
-@traceable(name="bm25_search", run_type="retriever")
 def _execute_bm25_search(
     bm25: BM25Okapi | None,
     chunk_ids: list[int],

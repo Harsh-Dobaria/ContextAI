@@ -1,10 +1,8 @@
 from typing import cast
 
-from langsmith import traceable
 from sentence_transformers import CrossEncoder
 
 
-@traceable(name="cross_encoder_rerank", run_type="chain")
 def _execute_rerank(
     model: CrossEncoder,
     question: str,

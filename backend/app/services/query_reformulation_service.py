@@ -3,7 +3,6 @@ import re
 
 from dotenv import load_dotenv
 from google import genai
-from langsmith import traceable
 
 
 load_dotenv()
@@ -42,7 +41,6 @@ def is_follow_up_question(question: str) -> bool:
     )
 
 
-@traceable(name="query_reformulation", run_type="chain")
 def reformulate_query(
     question: str,
     previous_question: str | None = None,

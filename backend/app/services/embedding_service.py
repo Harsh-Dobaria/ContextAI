@@ -1,5 +1,4 @@
 from sentence_transformers import SentenceTransformer
-from langsmith import traceable
 
 # Load the local model on startup
 # Using all-mpnet-base-v2 to preserve the 768 dimension size
@@ -7,7 +6,6 @@ model = SentenceTransformer("all-mpnet-base-v2")
 
 EMBEDDING_DIMENSION = 768
 
-@traceable(name="generate_embedding", run_type="embedding")
 def generate_embedding(text: str) -> list[float]:
     """
     Generate one embedding using the local model.

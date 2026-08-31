@@ -39,7 +39,6 @@ from app.services.bm25_service import (
     bm25_service
 )
 from app.services.embedding_service import generate_embedding
-from benchmarks.experimental.hyde import generate_hyde_document
 
 # ---------------------------------
 # Configuration
@@ -246,13 +245,11 @@ def main():
     faiss_results = []
     bm25_results = []
     hybrid_results = []
-    hyde_results = []
     rerank_results = []
     
     faiss_latencies = []
     bm25_latencies = []
     hybrid_latencies = []
-    hyde_latencies = []
     rerank_latencies = []
     
     granular_latencies = defaultdict(list)
@@ -470,42 +467,6 @@ def main():
         print(rerank_result["chunk_ids"])
         print(f"\nRerank Latency: {rerank_latency:.4f}s")
 
-        # ---------------------------------
-        # HYBRID + HyDE
-        # ---------------------------------
-        
-        t_start_hyde = time.perf_counter()
-        hyde_doc = generate_hyde_document(question)
-        hyde_time = time.perf_counter() - t_start_hyde
-        
-        t_start_hyde_embed = time.perf_counter()
-        hyde_embedding = generate_embedding(hyde_doc)
-        hyde_embed_time = time.perf_counter() - t_start_hyde_embed
-        
-        hyde_result, hyde_latency = (
-            run_retrieval(
-                question,
-                "hybrid",
-                hyde_embedding
-            )
-        )
-        
-        # Add the LLM time to total latency
-        hyde_latency += hyde_time + hyde_embed_time
-        
-        hyde_results.append(hyde_result)
-        hyde_latencies.append(hyde_latency)
-        
-        granular_latencies["hyde_llm"].append(hyde_time)
-        granular_latencies["hyde_embedding"].append(hyde_embed_time)
-        
-        for k, v in hyde_result.get("latencies", {}).items():
-            if k != "embedding":
-                granular_latencies[f"hyde_{k}"].append(v)
-                
-        print("\nHyDE IDs:")
-        print(hyde_result["chunk_ids"])
-        print(f"\nHyDE Latency (incl LLM): {hyde_latency:.4f}s")
 
 
     # ---------------------------------
@@ -526,11 +487,6 @@ def main():
         hybrid_results,
         questions
     )
-    
-    hyde_valid, hyde_hits, hyde_unlabeled, hyde_recall = calculate_recall(
-        hyde_results,
-        questions
-    )
 
     rerank_valid, rerank_hits, rerank_unlabeled, rerank_recall = calculate_recall(
         rerank_results,
@@ -545,13 +501,11 @@ def main():
     faiss_average = float(np.mean(faiss_latencies))
     bm25_average = float(np.mean(bm25_latencies))
     hybrid_average = float(np.mean(hybrid_latencies))
-    hyde_average = float(np.mean(hyde_latencies))
     rerank_average = float(np.mean(rerank_latencies))
 
     faiss_p95 = float(np.percentile(faiss_latencies, 95))
     bm25_p95 = float(np.percentile(bm25_latencies, 95))
     hybrid_p95 = float(np.percentile(hybrid_latencies, 95))
-    hyde_p95 = float(np.percentile(hyde_latencies, 95))
     rerank_p95 = float(np.percentile(rerank_latencies, 95))
 
 
@@ -701,20 +655,6 @@ def main():
     print(f"P95 Latency: {rerank_p95:.4f}s")
 
 
-    # ---------------------------------
-    # HYDE RESULTS
-    # ---------------------------------
-
-    print("\nHYBRID + HyDE")
-
-    if hyde_recall is None:
-        print("Recall@5: Ground truth not added yet")
-    else:
-        print(f"Hits: {hyde_hits} / {hyde_valid}")
-        print(f"Recall@5: {hyde_recall * 100:.2f}%")
-
-    print(f"Average Latency: {hyde_average:.4f}s")
-    print(f"P95 Latency: {hyde_p95:.4f}s")
 
 
     # ---------------------------------
@@ -741,12 +681,6 @@ def main():
 
         print(f"Hybrid vs FAISS: {improvement:+.2f} percentage points")
         
-        if hyde_recall is not None:
-            hyde_improvement = (
-                hyde_recall
-                - faiss_recall
-            ) * 100
-            print(f"HyDE vs FAISS: {hyde_improvement:+.2f} percentage points")
             
         if rerank_recall is not None:
             rerank_improvement = (

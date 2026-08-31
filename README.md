@@ -4,7 +4,7 @@ ContextAI is a modular Retrieval-Augmented Generation (RAG) platform designed fo
 
 The system combines dense semantic vector search (FAISS), sparse lexical search (BM25), adaptive Reciprocal Rank Fusion (RRF), and cross-encoder reranking to optimize retrieval quality. Queries are orchestrated through a compiled LangGraph workflow that incorporates query analysis, weak retrieval detection with automated retry, LLM response synthesis via Google Gemini, and citation verification to reduce hallucinations.
 
-ContextAI includes an empirical evaluation harness with 50 human-verified benchmark questions and built-in LangSmith tracing to systematically evaluate retrieval strategies, latency profiles, and failure modes.
+ContextAI includes an empirical evaluation harness with 50 human-verified benchmark questions to systematically evaluate retrieval strategies, latency profiles, and failure modes.
 
 ---
 
@@ -17,7 +17,7 @@ ContextAI includes an empirical evaluation harness with 50 human-verified benchm
 - **Query Analysis & Reformulation**: Intent classifier (semantic, keyword-focused, or broad) that dynamically adjusts context budgets and resolves multi-turn conversational follow-ups.
 - **Agentic LangGraph Orchestration**: StateGraph workflow featuring automated weak-retrieval retries, response generation, and post-generation citation verification against retrieved context.
 - **Multi-Workspace Isolation**: Workspace-scoped document ingestion, chunking (with overlap), and isolated database queries.
-- **LangSmith Tracing & Evaluation Suite**: Traced execution pipeline and automated evaluation reporting Recall@5, latency distributions (average and P95), and failure diagnostics.
+- **Evaluation Suite**: Automated benchmark reporting Recall@5, latency distributions (average and P95), and failure diagnostics.
 - **Full-Stack Interface**: React 19 and Vite frontend with Tailwind CSS, Markdown and citation rendering, workspace management, and light/dark theme support.
 
 ---
@@ -105,7 +105,6 @@ The retrieval pipeline was evaluated on a dedicated **50-question domain benchma
 | **BM25 Only** | 50.00% | 10.3 ms | 14.0 ms | -10.00 pp vs FAISS |
 | **Hybrid + RRF** | 66.00% | 10.7 ms | 12.9 ms | **+6.00 pp** vs FAISS |
 | **Hybrid + Reranker** | **84.00%** | 2.12 s | 2.14 s | **+24.00 pp** vs FAISS / **+18.00 pp** vs Hybrid |
-| **Hybrid + HyDE** | 64.00% | 2.10 s | 2.49 s | +4.00 pp vs FAISS |
 
 > *Note: These benchmark results reflect evaluation on ContextAI's 50-question labeled evaluation dataset and illustrate architecture tradeoffs rather than universal performance across all corpora.*
 
@@ -113,7 +112,6 @@ The retrieval pipeline was evaluated on a dedicated **50-question domain benchma
 
 1. **Hybrid Retrieval with RRF provides efficient gains**: Combining dense FAISS and sparse BM25 improved Recall@5 from 60% to 66% (+6 percentage points) with negligible search latency overhead (~10.7 ms).
 2. **Cross-Encoder Reranking achieves the highest recall**: Re-scoring top candidates with the cross-encoder transformer increased Recall@5 to **84%** (+24 percentage points over the baseline), though CPU inference introduced ~2.12 seconds of latency.
-3. **HyDE showed modest gains at high latency cost**: Generating hypothetical document embeddings via an LLM before retrieval yielded a 64% Recall@5 (+4 percentage points over FAISS), but added ~2.10s of inference latency, proving less effective than Cross-Encoder reranking for this benchmark.
 
 ---
 
@@ -133,7 +131,6 @@ The retrieval pipeline was evaluated on a dedicated **50-question domain benchma
 - **Reranker Model**: `cross-encoder/ms-marco-MiniLM-L-2-v2`
 - **LLM Provider**: Google Gemini (`gemini-3.5-flash-lite` via `google-genai`)
 - **Document Processing**: `pypdf`
-- **Tracing & Evaluation**: LangSmith SDK
 
 ### Frontend
 - **Framework**: React 19 + Vite
@@ -168,8 +165,7 @@ ContextAI/
 │   │   ├── benchmark_questions_labeled.json # 50-question labeled dataset
 │   │   ├── generate_ground_truth.py # Automated candidate generation script
 │   │   ├── label_ground_truth.py    # Ground truth labeling utility
-│   │   ├── langsmith_evaluation.py  # LangSmith experiment runner
-│   │   └── run_benchmark.py         # Local benchmark and profiling runner
+│   │   ├── run_benchmark.py         # Local benchmark and profiling runner
 │   ├── rag_graph.png                # Compiled LangGraph architecture visualization
 │   ├── requirements.txt             # Backend dependencies
 │   └── pyproject.toml               # Python project configuration
@@ -193,7 +189,6 @@ ContextAI/
 - Python 3.10+
 - Node.js 18+
 - Google Gemini API Key ([Google AI Studio](https://aistudio.google.com/))
-- (Optional) LangSmith API Key ([LangSmith](https://smith.langchain.com/))
 
 ---
 
@@ -247,11 +242,6 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 # JWT Authentication secret
 SECRET_KEY=your_jwt_secret_key_here
-
-# Optional: LangSmith Tracing & Observability
-LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=your_langsmith_api_key_here
-LANGSMITH_PROJECT=ContextAI
 ```
 
 Optional `.env` in `frontend/` (if targeting a remote backend host):
@@ -263,41 +253,14 @@ VITE_API_URL=http://127.0.0.1:8000
 
 ## Running the Benchmarks
 
-ContextAI includes local profiling scripts as well as LangSmith cloud experiment tracking.
+ContextAI includes local profiling and benchmark scripts.
 
-### 1. Run the Local Benchmark Suite
-Executes all 50 questions across FAISS, BM25, Hybrid RRF, Cross-Encoder Reranking, and HyDE with granular latency profiling:
+### Run the Benchmark Suite
+Executes all 50 questions across FAISS, BM25, Hybrid RRF, and Cross-Encoder Reranking with granular latency profiling:
 
 ```bash
 cd backend
 python benchmarks/run_benchmark.py
-```
-
-### 2. Run LangSmith Evaluation & Cloud Tracing
-Uploads the benchmark dataset to LangSmith, runs traced experiments, and computes aggregate Recall@5 and latency statistics:
-
-```bash
-cd backend
-# Evaluate all configurations
-python benchmarks/langsmith_evaluation.py
-
-# Force re-sync of local dataset with LangSmith
-python benchmarks/langsmith_evaluation.py --sync-dataset
-```
-
-### 3. Evaluate a Single Retrieval Mode
-```bash
-# Evaluate only Hybrid retrieval
-python benchmarks/langsmith_evaluation.py --mode hybrid
-
-# Evaluate only Hybrid + Reranker
-python benchmarks/langsmith_evaluation.py --mode hybrid_rerank
-```
-
-### 4. Run a Smoke Test (Subset of Questions)
-```bash
-# Rapid verification on first 5 questions
-python benchmarks/langsmith_evaluation.py --limit 5
 ```
 
 ---
