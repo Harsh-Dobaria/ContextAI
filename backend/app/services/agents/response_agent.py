@@ -93,7 +93,7 @@ Answer:
     # Gemini Request with Retry
     # -----------------------------
 
-    MAX_RETRIES = 3
+    MAX_RETRIES = 5
 
     response = None
 
@@ -108,7 +108,7 @@ Answer:
 
             break
 
-        except errors.ServerError as error:
+        except (errors.ServerError, errors.ClientError) as error:
 
             if attempt == MAX_RETRIES - 1:
 
@@ -128,12 +128,14 @@ Answer:
                     )
                 }
 
-            wait_time = 2 ** attempt
+            # If 429 or quota limit, wait 22s for free tier window to reset
+            is_rate_limit = "429" in str(error) or "RESOURCE_EXHAUSTED" in str(error)
+            wait_time = 22 if is_rate_limit else (2 ** attempt)
 
             print(
-                f"Gemini unavailable "
+                f"Gemini error "
                 f"(attempt {attempt + 1}/"
-                f"{MAX_RETRIES}). "
+                f"{MAX_RETRIES}): {error}. "
                 f"Retrying in {wait_time}s..."
             )
 

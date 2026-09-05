@@ -1,9 +1,22 @@
+import re
 from typing import cast
 
 from rank_bm25 import BM25Okapi
 from sqlalchemy.orm import Session
 
 from app.models.document_chunk import DocumentChunk
+
+
+def tokenize_text(text: str) -> list[str]:
+    """
+    Tokenizes text for BM25 lexical search.
+    Extracts alphanumeric tokens while preserving hyphens and underscores
+    (e.g., 'api_v1', 'luna-1', 'bert-base', '768', 'ye-1a').
+    Strips punctuation attached to words (e.g., 'space?' -> 'space', 'planet,' -> 'planet').
+    """
+    if not text:
+        return []
+    return re.findall(r"\b[a-zA-Z0-9_-]+\b", text.lower())
 
 
 def _execute_bm25_search(
@@ -15,10 +28,7 @@ def _execute_bm25_search(
     if bm25 is None:
         return []
 
-    query_tokens = (
-        query.lower()
-        .split()
-    )
+    query_tokens = tokenize_text(query)
 
     scores = bm25.get_scores(
         query_tokens
@@ -60,7 +70,7 @@ class BM25Service:
             return
 
         tokenized_corpus = [
-            chunk.content.lower().split()
+            tokenize_text(chunk.content)
             for chunk in chunks
         ]
 

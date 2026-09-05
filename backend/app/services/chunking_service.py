@@ -1,7 +1,7 @@
 def chunk_text(
     text: str,
-    chunk_size: int = 4000,
-    overlap: int = 500
+    chunk_size: int = 600,
+    overlap: int = 100
 ) -> list[str]:
 
     if not text.strip():

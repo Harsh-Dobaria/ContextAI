@@ -75,7 +75,8 @@ def retrieve_documents(
     retrieval_count: int = 3,
     retrieval_strategy: str = "semantic",
     retrieval_mode: str = "hybrid",
-    query_embedding: list[float] | None = None
+    query_embedding: list[float] | None = None,
+    rerank_depth: int = 15
 ) -> dict[str, Any]:
 
     latencies: dict[str, float] = {}
@@ -137,8 +138,8 @@ def retrieve_documents(
 
     else:
 
-        faiss_weight = 1.5
-        bm25_weight = 0.5
+        faiss_weight = 1.0
+        bm25_weight = 1.0
 
 
     # ---------------------------------
@@ -181,7 +182,7 @@ def retrieve_documents(
             preload_chunks()
             
         chunks_to_rerank = []
-        for chunk_id in hybrid_ids[:50]:
+        for chunk_id in hybrid_ids[:rerank_depth]:
             chunk_data = _chunk_map.get(chunk_id)
             if chunk_data and chunk_data["workspace_id"] == workspace_id:
                 chunks_to_rerank.append((chunk_id, chunk_data["chunk"].content))

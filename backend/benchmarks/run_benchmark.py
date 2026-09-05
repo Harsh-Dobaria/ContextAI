@@ -38,7 +38,9 @@ from app.services.agents.retrieval_agent import (
 from app.services.bm25_service import (
     bm25_service
 )
+from app.services.reranker_service import reranker_service
 from app.services.embedding_service import generate_embedding
+from benchmarks.metrics import evaluate_retrieval_pipeline
 
 # ---------------------------------
 # Configuration
@@ -134,53 +136,33 @@ def initialize_bm25():
 
 
 # ---------------------------------
-# Calculate Recall@K
+# Calculate Retrieval Metrics
 # ---------------------------------
 
 def calculate_recall(
     results,
-    questions
+    questions,
+    k=TOP_K
 ):
+    """
+    Evaluates Hit@K and true macro-averaged Recall@K.
 
-    total_valid = 0
-    hits = 0
-    unlabeled = 0
-
-    for result, question in zip(
-        results,
-        questions
-    ):
-
-        relevant_chunk_ids = set(
-            question.get(
-                "relevant_chunk_ids",
-                []
-            )
-        )
-
-        # Skip questions without ground truth
-
-        if not relevant_chunk_ids:
-            unlabeled += 1
-            continue
-
-        total_valid += 1
-
-        retrieved_chunk_ids = set(
-            result["chunk_ids"]
-        )
-
-        if (
-            relevant_chunk_ids
-            & retrieved_chunk_ids
-        ):
-
-            hits += 1
-
-    if total_valid == 0:
-        return 0, 0, unlabeled, None
-
-    recall = hits / total_valid
+    IMPLEMENTATION NOTE (Hit@K vs Recall@K):
+    When each question in a dataset has exactly 1 relevant chunk, Hit@K and
+    Recall@K are mathematically equivalent.
+    In this benchmark dataset (benchmark_questions_labeled.json):
+      - 18 questions have 1 relevant chunk (36%)
+      - 32 questions have multiple relevant chunks (64% - between 2 and 4 chunks)
+    Therefore:
+      - Hit@K measures binary coverage: at least 1 relevant chunk in top-K (1 or 0).
+      - Recall@K measures chunk coverage: len(rel & retrieved[:K]) / len(rel),
+        macro-averaged across all valid questions.
+    """
+    eval_res = evaluate_retrieval_pipeline(results, questions, k=k)
+    total_valid = eval_res["valid_questions"]
+    hits = eval_res.get("hits_count", 0)
+    unlabeled = eval_res["excluded_questions"]
+    recall = (eval_res["recall_at_k"] / 100.0) if eval_res["recall_at_k"] is not None else None
     return total_valid, hits, unlabeled, recall
 
 
@@ -225,10 +207,24 @@ def main():
     initialize_bm25()
     
     # ---------------------------------
-    # Preload Chunk Map
+    # Preload Chunk Map & Reranker Model
     # ---------------------------------
 
     preload_chunks()
+    reranker_service._load_model()
+
+    # ---------------------------------
+    # Warm-up pass (ensures steady-state execution without cold-start artifacts)
+    # ---------------------------------
+    _warm_emb = generate_embedding("space exploration warmup query")
+    for _mode in ["faiss", "bm25", "hybrid", "hybrid_rerank"]:
+        retrieve_documents(
+            question="space exploration warmup query",
+            workspace_id=WORKSPACE_ID,
+            retrieval_count=TOP_K,
+            retrieval_mode=_mode,
+            query_embedding=_warm_emb
+        )
 
     # ---------------------------------
     # Load benchmark questions
@@ -470,241 +466,126 @@ def main():
 
 
     # ---------------------------------
-    # Calculate Recall
+    # Evaluate Retrieval Metrics (Hit@K, Recall@K, MRR@K)
     # ---------------------------------
 
-    faiss_valid, faiss_hits, faiss_unlabeled, faiss_recall = calculate_recall(
-        faiss_results,
-        questions
-    )
-
-    bm25_valid, bm25_hits, bm25_unlabeled, bm25_recall = calculate_recall(
-        bm25_results,
-        questions
-    )
-
-    hybrid_valid, hybrid_hits, hybrid_unlabeled, hybrid_recall = calculate_recall(
-        hybrid_results,
-        questions
-    )
-
-    rerank_valid, rerank_hits, rerank_unlabeled, rerank_recall = calculate_recall(
-        rerank_results,
-        questions
-    )
-
+    faiss_eval = evaluate_retrieval_pipeline(faiss_results, questions, k=TOP_K)
+    bm25_eval = evaluate_retrieval_pipeline(bm25_results, questions, k=TOP_K)
+    hybrid_eval = evaluate_retrieval_pipeline(hybrid_results, questions, k=TOP_K)
+    rerank_eval = evaluate_retrieval_pipeline(rerank_results, questions, k=TOP_K)
 
     # ---------------------------------
-    # Calculate latency statistics
+    # Calculate Latency Statistics (Retrieval Latency)
     # ---------------------------------
 
-    faiss_average = float(np.mean(faiss_latencies))
-    bm25_average = float(np.mean(bm25_latencies))
-    hybrid_average = float(np.mean(hybrid_latencies))
-    rerank_average = float(np.mean(rerank_latencies))
+    faiss_avg_ms = float(np.mean(faiss_latencies)) * 1000.0
+    bm25_avg_ms = float(np.mean(bm25_latencies)) * 1000.0
+    hybrid_avg_ms = float(np.mean(hybrid_latencies)) * 1000.0
+    rerank_avg_ms = float(np.mean(rerank_latencies)) * 1000.0
 
-    faiss_p95 = float(np.percentile(faiss_latencies, 95))
-    bm25_p95 = float(np.percentile(bm25_latencies, 95))
-    hybrid_p95 = float(np.percentile(hybrid_latencies, 95))
-    rerank_p95 = float(np.percentile(rerank_latencies, 95))
-
+    faiss_p95_ms = float(np.percentile(faiss_latencies, 95)) * 1000.0
+    bm25_p95_ms = float(np.percentile(bm25_latencies, 95)) * 1000.0
+    hybrid_p95_ms = float(np.percentile(hybrid_latencies, 95)) * 1000.0
+    rerank_p95_ms = float(np.percentile(rerank_latencies, 95)) * 1000.0
 
     # ---------------------------------
-    # Final results
+    # Final results output
     # ---------------------------------
 
-    print(
-        "\n"
-        + "=" * 70
-    )
+    print("\n" + "=" * 70)
+    print("FINAL BENCHMARK RESULTS")
+    print("=" * 70)
 
-    print(
-        "FINAL BENCHMARK RESULTS"
-    )
-
-    print(
-        "=" * 70
-    )
-    
     total_q = len(questions)
-    
-    print(
-        f"\nTotal questions: {total_q}"
-    )
-    print(
-        f"Labeled questions (valid ground truth): {faiss_valid}"
-    )
-    print(
-        f"Unlabeled questions (skipped in recall): {faiss_unlabeled}"
-    )
+    valid_q = faiss_eval["valid_questions"]
+    excluded_q = faiss_eval["excluded_questions"]
 
+    print(f"\nTotal Questions: {total_q}")
+    print(f"Valid Questions (evaluated): {valid_q}")
+    if excluded_q > 0:
+        print(f"Excluded Questions (no ground truth): {excluded_q}")
 
-    # ---------------------------------
-    # FAISS RESULTS
-    # ---------------------------------
+    configs = [
+        ("FAISS", faiss_eval, faiss_avg_ms, faiss_p95_ms),
+        ("BM25", bm25_eval, bm25_avg_ms, bm25_p95_ms),
+        ("Hybrid RRF", hybrid_eval, hybrid_avg_ms, hybrid_p95_ms),
+        ("Hybrid + Reranker", rerank_eval, rerank_avg_ms, rerank_p95_ms),
+    ]
 
-    print(
-        "\nFAISS ONLY"
-    )
-
-    if faiss_recall is None:
-        print(
-            "Recall@5: "
-            "Ground truth not added yet"
-        )
-    else:
-        print(
-            f"Hits: {faiss_hits} / {faiss_valid}"
-        )
-        print(
-            f"Recall@5: "
-            f"{faiss_recall * 100:.2f}%"
-        )
-
-    print(
-        f"Average Latency: "
-        f"{faiss_average:.4f}s"
-    )
-
-    print(
-        f"P95 Latency: "
-        f"{faiss_p95:.4f}s"
-    )
-
+    for name, ev, avg_ms, p95_ms in configs:
+        print(f"\n=== {name} ===")
+        print(f"Valid Questions: {ev['valid_questions']}")
+        if ev["hit_at_k"] is not None:
+            print(f"Hit@{TOP_K}: {ev['hit_at_k']:.2f}%")
+            print(f"Recall@{TOP_K}: {ev['recall_at_k']:.2f}%")
+            print(f"MRR@{TOP_K}: {ev['mrr_at_k']:.4f}")
+        else:
+            print(f"Hit@{TOP_K}: N/A (no ground truth)")
+            print(f"Recall@{TOP_K}: N/A (no ground truth)")
+            print(f"MRR@{TOP_K}: N/A (no ground truth)")
+        print(f"Avg Retrieval Latency: {avg_ms:.2f} ms")
+        print(f"P95 Retrieval Latency: {p95_ms:.2f} ms")
 
     # ---------------------------------
-    # BM25 RESULTS
+    # Comparative Deltas (vs FAISS Baseline)
     # ---------------------------------
 
-    print(
-        "\nBM25 ONLY"
-    )
+    print("\n" + "=" * 70)
+    print("BENCHMARK COMPARISON & DELTAS (vs FAISS Baseline)")
+    print("=" * 70)
 
-    if bm25_recall is None:
-        print(
-            "Recall@5: "
-            "Ground truth not added yet"
-        )
-    else:
-        print(
-            f"Hits: {bm25_hits} / {bm25_valid}"
-        )
-        print(
-            f"Recall@5: "
-            f"{bm25_recall * 100:.2f}%"
-        )
+    if faiss_eval["recall_at_k"] is not None:
+        print("\nRecall@5 Comparison:")
+        print(f"  FAISS Baseline:       {faiss_eval['recall_at_k']:.2f}%")
+        if bm25_eval["recall_at_k"] is not None:
+            print(f"  BM25 vs FAISS:        {bm25_eval['recall_at_k'] - faiss_eval['recall_at_k']:+.2f} percentage points")
+        if hybrid_eval["recall_at_k"] is not None:
+            print(f"  Hybrid RRF vs FAISS:  {hybrid_eval['recall_at_k'] - faiss_eval['recall_at_k']:+.2f} percentage points")
+        if rerank_eval["recall_at_k"] is not None:
+            print(f"  Rerank vs FAISS:      {rerank_eval['recall_at_k'] - faiss_eval['recall_at_k']:+.2f} percentage points")
 
-    print(
-        f"Average Latency: "
-        f"{bm25_average:.4f}s"
-    )
+    if faiss_eval["hit_at_k"] is not None:
+        print("\nHit@5 Comparison:")
+        print(f"  FAISS Baseline:       {faiss_eval['hit_at_k']:.2f}%")
+        if bm25_eval["hit_at_k"] is not None:
+            print(f"  BM25 vs FAISS:        {bm25_eval['hit_at_k'] - faiss_eval['hit_at_k']:+.2f} percentage points")
+        if hybrid_eval["hit_at_k"] is not None:
+            print(f"  Hybrid RRF vs FAISS:  {hybrid_eval['hit_at_k'] - faiss_eval['hit_at_k']:+.2f} percentage points")
+        if rerank_eval["hit_at_k"] is not None:
+            print(f"  Rerank vs FAISS:      {rerank_eval['hit_at_k'] - faiss_eval['hit_at_k']:+.2f} percentage points")
 
-    print(
-        f"P95 Latency: "
-        f"{bm25_p95:.4f}s"
-    )
+    if faiss_eval["mrr_at_k"] is not None:
+        print("\nMRR@5 Comparison:")
+        print(f"  FAISS Baseline:       {faiss_eval['mrr_at_k']:.4f}")
+        if bm25_eval["mrr_at_k"] is not None:
+            print(f"  BM25 vs FAISS:        {bm25_eval['mrr_at_k'] - faiss_eval['mrr_at_k']:+.4f}")
+        if hybrid_eval["mrr_at_k"] is not None:
+            print(f"  Hybrid RRF vs FAISS:  {hybrid_eval['mrr_at_k'] - faiss_eval['mrr_at_k']:+.4f}")
+        if rerank_eval["mrr_at_k"] is not None:
+            print(f"  Rerank vs FAISS:      {rerank_eval['mrr_at_k'] - faiss_eval['mrr_at_k']:+.4f}")
 
-
-    # ---------------------------------
-    # HYBRID RESULTS
-    # ---------------------------------
-
-    print(
-        "\nHYBRID "
-        "(FAISS + BM25 + RRF)"
-    )
-
-    if hybrid_recall is None:
-        print(
-            "Recall@5: "
-            "Ground truth not added yet"
-        )
-    else:
-        print(
-            f"Hits: {hybrid_hits} / {hybrid_valid}"
-        )
-        print(
-            f"Recall@5: "
-            f"{hybrid_recall * 100:.2f}%"
-        )
-
-    print(
-        f"Average Latency: "
-        f"{hybrid_average:.4f}s"
-    )
-
-    print(
-        f"P95 Latency: "
-        f"{hybrid_p95:.4f}s"
-    )
-
-
-    # ---------------------------------
-    # HYBRID + RERANKER RESULTS
-    # ---------------------------------
-
-    print("\nHYBRID + RERANKER")
-
-    if rerank_recall is None:
-        print("Recall@5: Ground truth not added yet")
-    else:
-        print(f"Hits: {rerank_hits} / {rerank_valid}")
-        print(f"Recall@5: {rerank_recall * 100:.2f}%")
-
-    print(f"Average Latency: {rerank_average:.4f}s")
-    print(f"P95 Latency: {rerank_p95:.4f}s")
-
-
-
-
-    # ---------------------------------
-    # Recall improvement
-    # ---------------------------------
-
-    if (
-        faiss_recall is not None
-        and hybrid_recall is not None
-    ):
-
-        improvement = (
-            hybrid_recall
-            - faiss_recall
-        ) * 100
-        
-        print(
-            "\nRECALL IMPROVEMENT"
-        )
-
-        if bm25_recall is not None:
-            bm25_improvement = (bm25_recall - faiss_recall) * 100
-            print(f"BM25 vs FAISS: {bm25_improvement:+.2f} percentage points")
-
-        print(f"Hybrid vs FAISS: {improvement:+.2f} percentage points")
-        
-            
-        if rerank_recall is not None:
-            rerank_improvement = (
-                rerank_recall
-                - faiss_recall
-            ) * 100
-            print(f"Rerank vs FAISS: {rerank_improvement:+.2f} percentage points")
+    print("\nRetrieval Latency Comparison (Average / P95):")
+    print(f"  FAISS:                {faiss_avg_ms:.2f} ms / {faiss_p95_ms:.2f} ms")
+    print(f"  BM25:                 {bm25_avg_ms:.2f} ms / {bm25_p95_ms:.2f} ms")
+    print(f"  Hybrid RRF:           {hybrid_avg_ms:.2f} ms / {hybrid_p95_ms:.2f} ms")
+    print(f"  Hybrid + Reranker:    {rerank_avg_ms:.2f} ms / {rerank_p95_ms:.2f} ms")
 
     # ---------------------------------
     # Granular Profiling Results
     # ---------------------------------
-    
+
     print("\nGRANULAR PROFILING (Average / P95)")
     print("-" * 70)
     for key, vals in sorted(granular_latencies.items()):
-        avg = float(np.mean(vals))
-        p95 = float(np.percentile(vals, 95))
-        print(f"{key.ljust(20)}: {avg:.4f}s / {p95:.4f}s")
-
+        avg_ms_val = float(np.mean(vals)) * 1000.0
+        p95_ms_val = float(np.percentile(vals, 95)) * 1000.0
+        print(f"{key.ljust(20)}: {avg_ms_val:8.2f} ms / {p95_ms_val:8.2f} ms")
 
     print(
         "\n"
         + "=" * 70
     )
+
 
 
 if __name__ == "__main__":
